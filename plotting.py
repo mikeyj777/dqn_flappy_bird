@@ -38,3 +38,22 @@ def plot_losses(losses):
     plt.pause(0.001)  # pause a bit so that plots are updated
 
     plt.gcf()
+
+def save_graph(rewards_per_episode, epsilon_decay, durations_per_episode, losses, graph_file_name):
+    fig = plt.figure(3)
+    means = np.zeros((len(rewards_per_episode), 4), dtype=np.float32)
+    data = [rewards_per_episode, epsilon_decay, durations_per_episode, losses]
+    for i in range(len(data)):
+        for j in range(len(data[i])):
+            means[i, j] = np.mean(data[i][max(0, j-100):(j+1)])
+    
+    labels = ['rewards_per_episode', 'epsilon_decay', 'durations_per_episode', 'losses']
+    for i in range(len(data)):
+        subplot_id = 220 + i
+        plt.ylabel(labels[i])
+        plt.subplot(subplot_id)
+        plt.plot(means[i, :])
+
+    fig.subplots_adjust(wspace=0.5, hspace=1.0)
+
+    fig.savefig(graph_file_name)

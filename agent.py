@@ -6,9 +6,28 @@ from dqn import DQN
 from experience_replay import ReplayMemory
 import yaml
 import random
+
+import matplotlib
+import matplotlib.pyplot as plt
+
+from datetime import datetime, timedelta
+import argparse
+
+import os
+
 from plotting import *
 
+DATE_FORMAT = "%Y_%m_%d_%H%M%S"
+DATE_TIME_STAMP = datetime.now().strftime(DATE_FORMAT)
+
+RUNS_DIR = f'runs_{DATE_TIME_STAMP}'
+os.makedirs(RUNS_DIR, exist_ok=True)
+
+# 'agg' saves plots without displaying them
+matplotlib.use('Agg')
+
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
+device = 'cpu'
 
 class Agent:
 
@@ -27,56 +46,74 @@ class Agent:
         self.network_sync_rate = hyperparameters['network_sync_rate']
         self.learning_rate_a = hyperparameters['learning_rate_a']
         self.discount_factor_g = hyperparameters['discount_factor_g']
+        self.fc1_nodes = hyperparameters['fc1_nodes']
+        self.env_make_params = hyperparameters.get('env_make_params', {}) # try to get the params.  if key not there, return empty dict
 
         self.loss = torch.nn.MSELoss()
         self.optimizer = None
 
+        self.LOG_FILE = os.path.join(RUNS_DIR, f'{self.hyperparameter_set}.log')
+        self.MODEL_FILE = os.path.join(RUNS_DIR, f'{self.hyperparameter_set}.pt')
+        self.GRAPH_FILE = os.path.join(RUNS_DIR, f'{self.hyperparameter_set}.png')
+
     def run(self, is_training=True, render=False):
         
         # env = gymnasium.make("FlappyBird-v0", render_mode="rgb_array", use_lidar=False).env
-        render_mode = 'rgb_array'
-        if render:
-            render_mode = 'human'
-        env = gymnasium.make("CartPole-v1", render_mode=render_mode).env
+        if is_training:
+            start_time = datetime.now()
+            last_graph_update_time = start_time
+            log_message = f'started at {start_time.strftime(DATE_FORMAT)}:  Training starting...'
+            print(log_message)
+            with open(self.LOG_FILE, 'w') as file:
+                file.write(log_message + '\n')
+            
+        
+        env = gymnasium.make(self.env_id, render_mode='human' if render else None, **self.env_make_params).env
         num_actions = env.action_space.n
         num_states = env.observation_space.shape[0]
 
-        policy_dqn = DQN(num_states, num_actions).to(device)
+        rewards_per_episode = []
+        epsilon_history = []
+        durations_per_episode = []
+        losses = []
+        
+        policy_dqn = DQN(num_states, num_actions, self.fc1_nodes).to(device)
         
         epsilon = self.epsilon_init
 
         if is_training:
             memory = ReplayMemory(self.replay_memory_size)
-            target_dqn = DQN(num_states, num_actions).to(device)
+            target_dqn = DQN(num_states, num_actions, self.fc1_nodes).to(device)
             target_dqn.load_state_dict(policy_dqn.state_dict())
 
             training_steps = 0
 
             self.optimizer = torch.optim.Adam(policy_dqn.parameters(), lr=self.learning_rate_a)
 
-        
-        rewards_per_episode = []
-        epsilon_history = []
-        durations_per_episode = []
-        losses = []
+            best_reward = -9999999
+        else:
+            policy_dqn.load_state_dict(torch.load(self.MODEL_FILE))
 
+            #switch to evaluation mode
+            policy_dqn.eval()
+        
         for episode in itertools.count():
             state, _ = env.reset()
             state = torch.tensor(state, device=device, dtype=torch.float32)
             terminated = False
             episode_reward = 0.0
             duration = 0
-            while not terminated:
+            while not terminated and episode_reward < self.stop_on_reward:
                 duration += 1
                 if is_training and random.random() < epsilon:
                     action = env.action_space.sample()
                     action = torch.tensor(action, device=device, dtype=torch.int64)
-                else:
+                else:   
                     with torch.no_grad():
                         action = policy_dqn(state.unsqueeze(dim=0)).squeeze().argmax()
 
                 # Processing:
-                new_state, reward, terminated, _, info = env.step(action.item())
+                new_state, reward, terminated, truncated, info = env.step(action.item())
 
                 if terminated:
                     reward = -300
@@ -86,6 +123,22 @@ class Agent:
                 
                 episode_reward += reward
                 if is_training:
+                    if episode_reward > best_reward:
+                        log_message = f'{datetime.now().strftime(DATE_FORMAT)}:  new best reward: {episode_reward:0.1f}.  percent improved: {(100 * (episode_reward - best_reward) / best_reward):0.1f}%'
+                        print(log_message)
+                        with open(self.LOG_FILE, 'a') as file:
+                            file.write(log_message + '\n')
+                        
+                        torch.save(policy_dqn.state_dict(), self.MODEL_FILE)
+                        best_reward = episode_reward
+                    
+                    # update graph
+                    current_time = datetime.now()
+                    if current_time - last_graph_update_time > timedelta(seconds=10):
+                        save_graph(rewards_per_episode, epsilon_history, durations_per_episode, losses, self.GRAPH_FILE)
+                        last_graph_update_time = current_time
+                    
+
                     memory.append((state, action, new_state, reward, terminated))
 
                     training_steps += 1
@@ -135,5 +188,16 @@ class Agent:
         return loss.item()
 
 if __name__ == "__main__":
-    agent = Agent('cartpole1')
-    agent.run(is_training=True, render=False)
+    parser = argparse.ArgumentParser(description='Train or test model')
+    parser.add_argument('hyperparameters', help='')
+    parser.add_argument('--train', help='training mode', action='store_true')
+    args = parser.parse_args()
+
+    dql = Agent(args.hyperparameters)
+
+    if args.train:
+        dql.run(is_training=True, render=False)
+    else:
+        dql.run(is_training=False, render=True)
+
+
