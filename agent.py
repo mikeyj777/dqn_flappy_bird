@@ -17,10 +17,13 @@ import os
 
 from plotting import *
 
+game = 'cartpole1'
+train = True
+
 DATE_FORMAT = "%Y_%m_%d_%H%M%S"
 DATE_TIME_STAMP = datetime.now().strftime(DATE_FORMAT)
 
-RUNS_DIR = f'runs_{DATE_TIME_STAMP}'
+RUNS_DIR = f'runs/{DATE_TIME_STAMP}'
 os.makedirs(RUNS_DIR, exist_ok=True)
 
 # 'agg' saves plots without displaying them
@@ -37,6 +40,7 @@ class Agent:
             hyperparameters = all_hyperparameter_sets[hyperparameter_set]
             print(hyperparameters)
 
+        self.hyperparameter_set = hyperparameter_set
         self.env_id = hyperparameters['env_id']
         self.replay_memory_size = hyperparameters['replay_memory_size']
         self.mini_batch_size = hyperparameters['mini_batch_size']
@@ -48,6 +52,7 @@ class Agent:
         self.discount_factor_g = hyperparameters['discount_factor_g']
         self.fc1_nodes = hyperparameters['fc1_nodes']
         self.env_make_params = hyperparameters.get('env_make_params', {}) # try to get the params.  if key not there, return empty dict
+        self.stop_on_reward = hyperparameters['stop_on_reward']
 
         self.loss = torch.nn.MSELoss()
         self.optimizer = None
@@ -91,6 +96,7 @@ class Agent:
             self.optimizer = torch.optim.Adam(policy_dqn.parameters(), lr=self.learning_rate_a)
 
             best_reward = -9999999
+            episode_reward = 0.0
         else:
             policy_dqn.load_state_dict(torch.load(self.MODEL_FILE))
 
@@ -101,7 +107,6 @@ class Agent:
             state, _ = env.reset()
             state = torch.tensor(state, device=device, dtype=torch.float32)
             terminated = False
-            episode_reward = 0.0
             duration = 0
             while not terminated and episode_reward < self.stop_on_reward:
                 duration += 1
@@ -156,7 +161,7 @@ class Agent:
                 mini_batch = memory.sample(self.mini_batch_size)
                 loss = self.optimize(mini_batch, policy_dqn, target_dqn)
                 losses.append(loss)
-                plot_losses(losses)
+                # plot_losses(losses)
 
 
                 if training_steps > self.network_sync_rate:
@@ -188,16 +193,20 @@ class Agent:
         return loss.item()
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Train or test model')
-    parser.add_argument('hyperparameters', help='')
-    parser.add_argument('--train', help='training mode', action='store_true')
-    args = parser.parse_args()
 
-    dql = Agent(args.hyperparameters)
+    # parser = argparse.ArgumentParser(description='Train or test model')
+    # parser.add_argument('hyperparameters', help='')
+    # parser.add_argument('--train', help='training mode', action='store_true')
+    # args = parser.parse_args()
 
-    if args.train:
-        dql.run(is_training=True, render=False)
-    else:
-        dql.run(is_training=False, render=True)
+    dql = Agent(game)
 
+    is_training=True
+    render = False
+    if not train:
+        is_training = False
+        render = True
 
+    dql.run(is_training=is_training, render=render)
+
+apple = 1
