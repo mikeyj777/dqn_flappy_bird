@@ -6,7 +6,7 @@ from dqn import DQN
 from experience_replay import ReplayMemory
 import yaml
 import random
-from plotting import plot_durations
+from plotting import *
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
@@ -58,6 +58,7 @@ class Agent:
         rewards_per_episode = []
         epsilon_history = []
         durations_per_episode = []
+        losses = []
 
         for episode in itertools.count():
             state, _ = env.reset()
@@ -94,13 +95,16 @@ class Agent:
             
             rewards_per_episode.append(episode_reward)
             durations_per_episode.append(duration)
-            plot_durations(durations_per_episode)
+            # plot_durations(durations_per_episode)
             epsilon = max(self.epsilon_min, epsilon * self.epsilon_decay)
             epsilon_history.append(epsilon)
 
             if is_training and len(memory) >= self.mini_batch_size:
                 mini_batch = memory.sample(self.mini_batch_size)
-                self.optimize(mini_batch, policy_dqn, target_dqn)
+                loss = self.optimize(mini_batch, policy_dqn, target_dqn)
+                losses.append(loss)
+                plot_losses(losses)
+
 
                 if training_steps > self.network_sync_rate:
                     target_dqn.load_state_dict(policy_dqn.state_dict())
@@ -127,6 +131,8 @@ class Agent:
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
+
+        return loss.item()
 
 if __name__ == "__main__":
     agent = Agent('cartpole1')
