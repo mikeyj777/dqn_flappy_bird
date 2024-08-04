@@ -11,16 +11,16 @@ import argparse
 
 
 
-from dqn import DQN
+from dqn_4_by_512 import DQN_4_by_512 as DQN
 from experience_replay import ReplayMemory
 from helpers import *
 from plotting import *
 
-seed = 44
+# seed = 44
 
 # random.seed(seed)
 
-game = 'flappybird1'
+game = 'flappybird0'
 train = True
 
 DATE_FORMAT = "%Y_%m_%d_%H%M%S"
@@ -106,6 +106,7 @@ class Agent:
         
         for episode in itertools.count():
             episode_reward = 0.0
+            # state, _ = env.reset(seed=seed)
             state, _ = env.reset()
             state = torch.tensor(state, device=device, dtype=torch.float32)
             terminated = False

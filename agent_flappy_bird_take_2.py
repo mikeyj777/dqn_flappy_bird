@@ -16,18 +16,17 @@ from experience_replay import ReplayMemory
 from helpers import *
 from plotting import *
 
-seed = 44
+# seed = 44
 
-random.seed(seed)
+# random.seed(seed)
 
 game = 'flappybird1'
-train = False
+train = True
 
 DATE_FORMAT = "%Y_%m_%d_%H%M%S"
 DATE_TIME_STAMP = f'{game}_{datetime.now().strftime(DATE_FORMAT)}'
 
 RUNS_DIR = f'runs/{DATE_TIME_STAMP}'
-os.makedirs(RUNS_DIR, exist_ok=True)
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 device = 'cpu'
@@ -65,6 +64,7 @@ class Agent:
         
         # env = gymnasium.make("FlappyBird-v0", render_mode="rgb_array", use_lidar=False).env
         if is_training:
+            os.makedirs(RUNS_DIR, exist_ok=True)
             start_time = datetime.now()
             last_graph_update_time = start_time
             log_message = f'started at {start_time.strftime(DATE_FORMAT)}:  Training starting...'
@@ -106,7 +106,8 @@ class Agent:
         
         for episode in itertools.count():
             episode_reward = 0.0
-            state, _ = env.reset(seed=seed)
+            # state, _ = env.reset(seed=seed)
+            state, _ = env.reset()
             state = torch.tensor(state, device=device, dtype=torch.float32)
             terminated = False
             duration = 0
