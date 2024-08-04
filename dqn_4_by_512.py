@@ -8,7 +8,7 @@ import torch.nn.functional as F
 
 class DQN_4_by_512(nn.Module):
 
-    def __init__(self, state_size, action_size, hidden_dim=256):
+    def __init__(self, state_size, action_size, hidden_dim=512):
         super(DQN_4_by_512, self).__init__()
         self.fc1 = nn.Linear(state_size, hidden_dim)
         self.fc2 = nn.Linear(hidden_dim, hidden_dim)

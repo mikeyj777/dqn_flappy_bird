@@ -8,7 +8,7 @@ cartpole1:
   network_sync_rate: 10
   learning_rate_a: 0.0001
   discount_factor_g: 0.99
-  fc1_nodes: 256
+  fc1_nodes: 512
   stop_on_reward: 1000000
 
 flappybird0:
