@@ -12,6 +12,7 @@ import argparse
 
 
 from dqn_4_by_512_adapt_from_flappy_to_cartpole import AdaptedModel
+from dqn_4_by_512 import DQN_4_by_512 as DQN_flappy
 from experience_replay import ReplayMemory
 from helpers import *
 from plotting import *
@@ -82,16 +83,19 @@ class Agent:
         durations_per_episode = []
         losses = []
         
-        path_to_trained_model = get_path_to_trained_model()
-        original_model = torch.load(path_to_trained_model)
+        path_to_trained_model = get_path_to_trained_model(initialdir='trained_model_4x512_2')
+        state_dict = torch.load(path_to_trained_model)
+        prev_state_size = state_dict['fc1.weight'].shape[1]
+        prev_action_size = state_dict['fc4.weight'].shape[0]
+        flappy_model = DQN_flappy(state_size=prev_state_size, action_size=prev_action_size, hidden_dim=512).to(device)
+        flappy_model.load_state_dict(state_dict)
 
-        policy_dqn = AdaptedModel(original_model=original_model, new_observations=num_states, new_actions=num_actions, hidden_dim=self.fc1_nodes).to(device)
-        
+        policy_dqn = AdaptedModel(original_model=flappy_model, new_observations=num_states, new_actions=num_actions, hidden_dim=self.fc1_nodes).to(device)
         epsilon = self.epsilon_init
 
         if is_training:
             memory = ReplayMemory(self.replay_memory_size)
-            target_dqn = DQN(num_states, num_actions, self.fc1_nodes).to(device)
+            target_dqn = AdaptedModel(original_model=flappy_model, new_observations=num_states, new_actions=num_actions, hidden_dim=self.fc1_nodes).to(device)
             target_dqn.load_state_dict(policy_dqn.state_dict())
 
             training_steps = 0
