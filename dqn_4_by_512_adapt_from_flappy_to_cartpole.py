@@ -32,8 +32,6 @@ class AdaptedModel(nn.Module):
         # self.features = nn.Sequential()
         # # Add a new fully connected layer to match CartPole's action space
         self.fc = nn.Linear(self.features[-1].out_features, 2)  # CartPole has 2 actions: left or right
-
-        apple = 1
     
     def forward(self, x):
         for layer in self.features:
