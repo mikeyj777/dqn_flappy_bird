@@ -1,20 +1,19 @@
+import os
 import itertools
 import torch
 import flappy_bird_gymnasium
 import gymnasium
-from dqn import DQN
-from experience_replay import ReplayMemory
 import yaml
 import random
-
-import matplotlib
-import matplotlib.pyplot as plt
 
 from datetime import datetime, timedelta
 import argparse
 
-import os
 
+
+from dqn import DQN
+from experience_replay import ReplayMemory
+from helpers import *
 from plotting import *
 
 game = 'cartpole1'
@@ -25,9 +24,6 @@ DATE_TIME_STAMP = datetime.now().strftime(DATE_FORMAT)
 
 RUNS_DIR = f'runs/{DATE_TIME_STAMP}'
 os.makedirs(RUNS_DIR, exist_ok=True)
-
-# 'agg' saves plots without displaying them
-matplotlib.use('Agg')
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 device = 'cpu'
@@ -96,14 +92,16 @@ class Agent:
             self.optimizer = torch.optim.Adam(policy_dqn.parameters(), lr=self.learning_rate_a)
 
             best_reward = -9999999
-            episode_reward = 0.0
         else:
-            policy_dqn.load_state_dict(torch.load(self.MODEL_FILE))
+
+            filenm = get_path_to_trained_model()
+            policy_dqn.load_state_dict(torch.load(filenm))
 
             #switch to evaluation mode
             policy_dqn.eval()
         
         for episode in itertools.count():
+            episode_reward = 0.0
             state, _ = env.reset()
             state = torch.tensor(state, device=device, dtype=torch.float32)
             terminated = False
@@ -120,30 +118,14 @@ class Agent:
                 # Processing:
                 new_state, reward, terminated, truncated, info = env.step(action.item())
 
-                if terminated:
-                    reward = -300
+                # if terminated:
+                #     reward = -3000
 
                 new_state = torch.tensor(new_state, device=device, dtype=torch.float32)
                 reward = torch.tensor(reward, device=device, dtype=torch.float32)
                 
                 episode_reward += reward
                 if is_training:
-                    if episode_reward > best_reward:
-                        log_message = f'{datetime.now().strftime(DATE_FORMAT)}:  new best reward: {episode_reward:0.1f}.  percent improved: {(100 * (episode_reward - best_reward) / best_reward):0.1f}%'
-                        print(log_message)
-                        with open(self.LOG_FILE, 'a') as file:
-                            file.write(log_message + '\n')
-                        
-                        torch.save(policy_dqn.state_dict(), self.MODEL_FILE)
-                        best_reward = episode_reward
-                    
-                    # update graph
-                    current_time = datetime.now()
-                    if current_time - last_graph_update_time > timedelta(seconds=10):
-                        save_graph(rewards_per_episode, epsilon_history, durations_per_episode, losses, self.GRAPH_FILE)
-                        last_graph_update_time = current_time
-                    
-
                     memory.append((state, action, new_state, reward, terminated))
 
                     training_steps += 1
@@ -153,11 +135,32 @@ class Agent:
             
             rewards_per_episode.append(episode_reward)
             durations_per_episode.append(duration)
-            # plot_durations(durations_per_episode)
             epsilon = max(self.epsilon_min, epsilon * self.epsilon_decay)
             epsilon_history.append(epsilon)
 
-            if is_training and len(memory) >= self.mini_batch_size:
+            if not is_training:
+                continue
+            
+            plot_durations(durations_per_episode)
+
+            if episode_reward.item() > best_reward:
+                    log_message = f'{datetime.now().strftime(DATE_FORMAT)}:  new best reward: {episode_reward:0.1f}.  percent improved: {(100 * (episode_reward - best_reward) / best_reward):0.1f}%'
+                    print(log_message)
+                    with open(self.LOG_FILE, 'a') as file:
+                        file.write(log_message + '\n')
+                    
+                    torch.save(policy_dqn.state_dict(), self.MODEL_FILE)
+                    best_reward = episode_reward.item()
+                
+            # update graph
+            current_time = datetime.now()
+            if current_time - last_graph_update_time > timedelta(seconds=10):
+                if len(rewards_per_episode) == 0:
+                    rewards_per_episode.append(episode_reward)
+                # save_graph(rewards_per_episode, epsilon_history, durations_per_episode, losses, self.GRAPH_FILE)
+                last_graph_update_time = current_time
+            
+            if len(memory) >= self.mini_batch_size:
                 mini_batch = memory.sample(self.mini_batch_size)
                 loss = self.optimize(mini_batch, policy_dqn, target_dqn)
                 losses.append(loss)
@@ -167,6 +170,7 @@ class Agent:
                 if training_steps > self.network_sync_rate:
                     target_dqn.load_state_dict(policy_dqn.state_dict())
                     training_steps = 0
+                    
                 
         env.close()
 

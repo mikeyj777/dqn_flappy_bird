@@ -1,8 +1,7 @@
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
 import torch
-
-plt.ion()
 
 def plot_durations(episode_durations):
     plt.figure(1)
@@ -23,6 +22,7 @@ def plot_durations(episode_durations):
     plt.gcf()
 
 def plot_losses(losses):
+    plt.ion()
     plt.figure(2)
     plt.clf()
     plt.title('Training...')
@@ -39,6 +39,7 @@ def plot_losses(losses):
     plt.gcf()
 
 def save_graph(rewards_per_episode, epsilon_decay, durations_per_episode, losses, graph_file_name):
+    matplotlib.use('Agg')
     fig = plt.figure(3)
     means = np.zeros((4, len(rewards_per_episode)), dtype=np.float32)
     data = [rewards_per_episode, epsilon_decay, durations_per_episode, losses]
@@ -51,8 +52,10 @@ def save_graph(rewards_per_episode, epsilon_decay, durations_per_episode, losses
         subplot_id = 221 + i
         plt.ylabel(labels[i])
         plt.subplot(subplot_id)
-        plt.plot(means[i, :])
+        plt.plot(data[i])
+        plt.plot(means[i])
 
     fig.subplots_adjust(wspace=0.5, hspace=1.0)
 
     fig.savefig(graph_file_name)
+    plt.close(fig)
