@@ -18,7 +18,7 @@ from plotting import *
 
 seed = 44
 
-# random.seed(seed)
+random.seed(seed)
 
 game = 'flappybird1'
 train = True
@@ -106,7 +106,7 @@ class Agent:
         
         for episode in itertools.count():
             episode_reward = 0.0
-            state, _ = env.reset()
+            state, _ = env.reset(seed=seed)
             state = torch.tensor(state, device=device, dtype=torch.float32)
             terminated = False
             duration = 0
