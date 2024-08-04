@@ -16,11 +16,11 @@ from experience_replay import ReplayMemory
 from helpers import *
 from plotting import *
 
-game = 'cartpole1'
+game = 'flappybird1'
 train = True
 
 DATE_FORMAT = "%Y_%m_%d_%H%M%S"
-DATE_TIME_STAMP = datetime.now().strftime(DATE_FORMAT)
+DATE_TIME_STAMP = f'{game}_{datetime.now().strftime(DATE_FORMAT)}'
 
 RUNS_DIR = f'runs/{DATE_TIME_STAMP}'
 os.makedirs(RUNS_DIR, exist_ok=True)
@@ -115,11 +115,16 @@ class Agent:
                     with torch.no_grad():
                         action = policy_dqn(state.unsqueeze(dim=0)).squeeze().argmax()
 
+                if duration == 50:
+                    apple = 1
+
                 # Processing:
                 new_state, reward, terminated, truncated, info = env.step(action.item())
 
-                # if terminated:
-                #     reward = -3000
+                if terminated:
+                    print(f'{duration = }')
+                    apple = 1
+                    # reward = -300
 
                 new_state = torch.tensor(new_state, device=device, dtype=torch.float32)
                 reward = torch.tensor(reward, device=device, dtype=torch.float32)
@@ -141,10 +146,11 @@ class Agent:
             if not is_training:
                 continue
             
-            plot_durations(durations_per_episode)
+            # plot_durations(durations_per_episode)
 
             if episode_reward.item() > best_reward:
-                    log_message = f'{datetime.now().strftime(DATE_FORMAT)}:  new best reward: {episode_reward:0.1f}.  percent improved: {(100 * (episode_reward - best_reward) / best_reward):0.1f}%'
+                    training_time = datetime.now() - start_time
+                    log_message = f'{datetime.now().strftime(DATE_FORMAT)} | duration: {training_time} |  new best reward: {episode_reward:0.1f} | percent improved: {(100 * (best_reward - episode_reward) / best_reward):0.1f}%'
                     print(log_message)
                     with open(self.LOG_FILE, 'a') as file:
                         file.write(log_message + '\n')
@@ -157,7 +163,7 @@ class Agent:
             if current_time - last_graph_update_time > timedelta(seconds=10):
                 if len(rewards_per_episode) == 0:
                     rewards_per_episode.append(episode_reward)
-                # save_graph(rewards_per_episode, epsilon_history, durations_per_episode, losses, self.GRAPH_FILE)
+                # save_or_show_graph(rewards_per_episode, epsilon_history, durations_per_episode, losses, self.GRAPH_FILE, save_fig=False)
                 last_graph_update_time = current_time
             
             if len(memory) >= self.mini_batch_size:

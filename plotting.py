@@ -38,9 +38,13 @@ def plot_losses(losses):
     plt.pause(0.001)
     plt.gcf()
 
-def save_graph(rewards_per_episode, epsilon_decay, durations_per_episode, losses, graph_file_name):
-    matplotlib.use('Agg')
+def save_or_show_graph(rewards_per_episode, epsilon_decay, durations_per_episode, losses, graph_file_name, save_fig=False):
     fig = plt.figure(3)
+    if save_fig:
+        matplotlib.use('Agg')
+    else:
+        plt.ion()
+        plt.clf()
     means = np.zeros((4, len(rewards_per_episode)), dtype=np.float32)
     data = [rewards_per_episode, epsilon_decay, durations_per_episode, losses]
     for i in range(len(data)):
@@ -57,5 +61,9 @@ def save_graph(rewards_per_episode, epsilon_decay, durations_per_episode, losses
 
     fig.subplots_adjust(wspace=0.5, hspace=1.0)
 
-    fig.savefig(graph_file_name)
-    plt.close(fig)
+    if save_fig:
+        fig.savefig(graph_file_name)
+        plt.close(fig)
+    else:
+        plt.pause(0.001)
+        plt.gcf()
