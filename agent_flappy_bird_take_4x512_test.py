@@ -21,7 +21,7 @@ from plotting import *
 # random.seed(seed)
 
 game = 'flappybird0'
-train = True
+train = False
 
 DATE_FORMAT = "%Y_%m_%d_%H%M%S"
 DATE_TIME_STAMP = f'{game}_{datetime.now().strftime(DATE_FORMAT)}'
