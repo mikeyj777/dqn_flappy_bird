@@ -12,10 +12,12 @@ def plot_param(param):
     plt.xlabel('Episode')
     plt.plot(param.numpy())
     # Take 100 episode averages and plot them too
-    if len(param) >= 100:
-        means = param.unfold(0, 100, 1).mean(1).view(-1)
-        means = torch.cat((torch.zeros(99), means))
-        plt.plot(means.numpy())
+    N = len(param)
+    param_np = np.array(param)
+    running_ave = np.empty(N)
+    for t in range(N):
+        running_ave[t] = param_np[max(0, t-100):(t+1)].mean()
+    plt.plot(running_ave)
 
     plt.pause(0.001)  # pause a bit so that plots are updated
 

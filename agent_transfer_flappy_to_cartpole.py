@@ -22,7 +22,7 @@ seed = 44
 # random.seed(seed)
 
 game = 'cartpole1'
-train = False
+train = True
 
 DATE_FORMAT = "%Y_%m_%d_%H%M%S"
 DATE_TIME_STAMP = f'{game}_{datetime.now().strftime(DATE_FORMAT)}'
@@ -126,16 +126,11 @@ class Agent:
                     with torch.no_grad():
                         action = policy_dqn(state.unsqueeze(dim=0)).squeeze().argmax()
 
-                if duration == 50:
-                    apple = 1
-
                 # Processing:
                 new_state, reward, terminated, truncated, info = env.step(action.item())
 
                 if terminated:
-                    # print(f'{duration = }')
-                    apple = 1
-                    # reward = -300
+                    reward = -300
 
                 new_state = torch.tensor(new_state, device=device, dtype=torch.float32)
                 reward = torch.tensor(reward, device=device, dtype=torch.float32)
@@ -161,6 +156,8 @@ class Agent:
 
             if episode_reward.item() > best_reward:
                     training_time = datetime.now() - start_time
+                    if best_reward == 0:
+                        best_reward = 0.001
                     log_message = f'{datetime.now().strftime(DATE_FORMAT)} | duration: {training_time} | num_steps:  {duration} | new best reward: {episode_reward:0.1f} | percent improved: {(100 * (best_reward - episode_reward) / best_reward):0.1f}%'
                     print(log_message)
                     with open(self.LOG_FILE, 'a') as file:
