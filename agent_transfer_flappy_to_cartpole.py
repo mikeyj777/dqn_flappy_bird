@@ -22,7 +22,7 @@ seed = 44
 # random.seed(seed)
 
 game = 'cartpole1'
-train = True
+train = False
 
 DATE_FORMAT = "%Y_%m_%d_%H%M%S"
 DATE_TIME_STAMP = f'{game}_{datetime.now().strftime(DATE_FORMAT)}'
@@ -83,7 +83,7 @@ class Agent:
         durations_per_episode = []
         losses = []
         
-        path_to_trained_model = get_path_to_trained_model(initialdir='trained_model_4x512_2')
+        path_to_trained_model = 'trained_model_4x512_2/flappybird1.pt'
         state_dict = torch.load(path_to_trained_model)
         prev_state_size = state_dict['fc1.weight'].shape[1]
         prev_action_size = state_dict['fc4.weight'].shape[0]

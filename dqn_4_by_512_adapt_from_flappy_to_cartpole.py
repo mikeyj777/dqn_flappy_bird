@@ -15,10 +15,10 @@ class AdaptedModel(nn.Module):
             original_model.fc2,
             original_model.fc3,
         ])
-        from_new = nn.Linear(new_observations, hidden_dim)
+
+        prev_observations = original_model.fc1.in_features
+        from_new = nn.Linear(new_observations, prev_observations)
         self.features = nn.ModuleList([from_new, *self.features])
-        # Add a new fully connected layer to match CartPole's action space
-        self.fc = nn.Linear(self.features[-1].out_features, 2)  # CartPole has 2 actions: left or right
         
         # super(AdaptedModel, self).__init__()
         # # Extract all layers except the final layer
@@ -32,8 +32,11 @@ class AdaptedModel(nn.Module):
         # self.features = nn.Sequential()
         # # Add a new fully connected layer to match CartPole's action space
         self.fc = nn.Linear(self.features[-1].out_features, 2)  # CartPole has 2 actions: left or right
+
+        apple = 1
     
     def forward(self, x):
-        x = self.features(x)
+        for layer in self.features:
+            x = layer(x)
         x = self.fc(x)
         return x
